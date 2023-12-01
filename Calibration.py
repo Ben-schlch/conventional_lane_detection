@@ -23,7 +23,7 @@ class Calibration:
         self.own_dir = os.path.dirname(os.path.abspath(__file__))
         self.calib_path: str = os.path.join(self.own_dir, calib_path)
         self.calib_config_path = os.path.join(self.own_dir, calib_config_path)
-        self._get_trans_mat_pickle(os.path.join(self.own_dir, warp_mat_path))
+        # self._get_trans_mat_pickle(os.path.join(self.own_dir, warp_mat_path))
         self._calibrate()
 
     def _get_obj_img_points(self) -> tuple[Sequence[Mat], Sequence[Mat]]:
@@ -80,8 +80,9 @@ class Calibration:
         undist_img = undist_img[y: y+h, x:x+w]
         return undist_img
 
-    def _get_trans_mat_pickle(self, warp_mat_path: str):
-        self.warp_src, self.warp_dst = pickle.load(open(warp_mat_path, 'rb'))
+    # def _get_trans_mat_pickle(self, warp_mat_path: str):
+    #     # self.warp_src, self.warp_dst = pickle.load(open(warp_mat_path, 'rb'))
+    #     return
 
     def warp_to_birdseye(self, img: Mat) -> Mat:
         h, w = img.shape[:2]
@@ -92,8 +93,8 @@ class Calibration:
 
 if __name__ == '__main__':
     calibration = Calibration()
-    image = calibration.undistort(cv.cvtColor(cv.imread('./images/image001.jpg'), cv.COLOR_BGR2RGB))
-    image = calibration.warp_to_birdseye(image)
+    image = calibration.undistort(cv.cvtColor(cv.imread('./images/Udacity/image001.jpg'), cv.COLOR_BGR2RGB))
+    # image = calibration.warp_to_birdseye(image)
     plt.figure(figsize=(30,30))
     plt.imshow(image)
     plt.show()
