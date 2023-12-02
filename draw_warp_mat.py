@@ -39,6 +39,7 @@ if __name__ == "__main__":
     img_scanner = cv.imread(
         'C:/users/inf21034/PycharmProjects/conventional_lane_detection/images/Udacity/image001.jpg')
     img_scanner = Calibration().undistort(img_scanner)
+    img_scanner = img_scanner[375:600, 200:1100]
     img = img_scanner.copy()
     scanner_points = []
     cv.namedWindow('image')
