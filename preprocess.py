@@ -8,7 +8,8 @@ def preprocess(img: Mat) -> Mat:
     img_filtered = __filter_colors(img)
     img_gray = cv.cvtColor(img_filtered, cv.COLOR_RGB2GRAY)
     img_canny = cv.Canny(img_gray, 50, 150)
-    img_roi = __find_and_cut_region(img_canny)
+    img_blurred = cv.GaussianBlur(img_canny, (5, 5), 0)
+    img_roi = __find_and_cut_region(img_blurred)
     return img_roi
 
 
