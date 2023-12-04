@@ -23,7 +23,7 @@ class Calibration:
         self.own_dir = os.path.dirname(os.path.abspath(__file__))
         self.calib_path: str = os.path.join(self.own_dir, calib_path)
         self.calib_config_path = os.path.join(self.own_dir, calib_config_path)
-        # self._get_trans_mat_pickle(os.path.join(self.own_dir, warp_mat_path))
+        self._get_trans_mat_pickle(os.path.join(self.own_dir, warp_mat_path))
         self._calibrate()
 
     def _get_obj_img_points(self) -> tuple[Sequence[Mat], Sequence[Mat]]:
@@ -89,6 +89,17 @@ class Calibration:
         M = cv.getPerspectiveTransform(np.float32(self.warp_src), np.float32(self.warp_dst))
         warped = cv.warpPerspective(img, M, (w, h), flags=cv.INTER_LINEAR)
         return warped
+
+    def warp_from_birdseye(self, img: Mat) -> Mat:
+        h, w = img.shape[:2]
+        M = cv.getPerspectiveTransform(np.float32(self.warp_dst), np.float32(self.warp_src))
+        warped = cv.warpPerspective(img, M, (w, h), flags=cv.INTER_LINEAR)
+        return warped
+
+    def _get_trans_mat_pickle(self, warp_mat_path: str):
+        if os.path.exists(warp_mat_path):
+            self.warp_src, self.warp_dst = pickle.load(open(warp_mat_path, 'rb'))
+            return
 
 
 if __name__ == '__main__':
