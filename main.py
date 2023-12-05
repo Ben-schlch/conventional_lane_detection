@@ -91,18 +91,18 @@ class LaneDetection:
         left_line, right_line = self._fit_lane_lines(left_line, right_line)
         img = np.copy(img)
         half_height = img.shape[0] // 2
-        x = np.linspace(half_height + 85, img.shape[0] -1, img.shape[0] - half_height)
+        y = np.linspace(half_height + 85, img.shape[0] -1, img.shape[0] - half_height)
         if len(left_line) == 2:
-            y_left = left_line[0] * x + left_line[1]
+            x_left = left_line[0] * y + left_line[1]
         elif len(left_line) == 3:
-            y_left = left_line[0] * x ** 2 + left_line[1] * x + left_line[2]
+            x_left = left_line[0] * y ** 2 + left_line[1] * y + left_line[2]
         if len(right_line) == 2:
-            y_right = right_line[0] * x + right_line[1]
+            x_right = right_line[0] * y + right_line[1]
         elif len(right_line) == 3:
-            y_right = right_line[0] * x ** 2 + right_line[1] * x + right_line[2]
+            x_right = right_line[0] * y ** 2 + right_line[1] * y + right_line[2]
         line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-        left_points = np.array(np.transpose(np.vstack([y_left, x])), np.int32)
-        right_points = np.array(np.transpose(np.vstack([y_right, x])), np.int32)
+        left_points = np.array(np.transpose(np.vstack([x_left, y])), np.int32)
+        right_points = np.array(np.transpose(np.vstack([x_right, y])), np.int32)
         cv.polylines(line_img, [left_points], False, (255, 0, 0), thickness=10)
         cv.polylines(line_img, [right_points], False, (0, 0, 255), thickness=10)
         return cv.addWeighted(img, 0.8, line_img, 1, 0)
