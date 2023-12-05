@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 def preprocess(img: Mat) -> Mat:
     img_filtered = __filter_colors(img)
     img_gray = cv.cvtColor(img_filtered, cv.COLOR_RGB2GRAY)
-    img_canny = cv.Canny(img_gray, 50, 150)
-    # img_blurred = cv.GaussianBlur(img_canny, (5, 5), 0)
-    # img_roi = __find_and_cut_region(img_blurred)
-    return img_canny
+    img_blurred = cv.GaussianBlur(img_gray, (5, 5), 0)
+    img_canny = cv.Canny(img_blurred, 50, 150) # cv.threshold(img_gray, 200, 255, cv.THRESH_BINARY)# cv.Canny(img_gray, 50, 150)
+
+    img_roi = __find_and_cut_region(img_canny)
+    return img_roi
 
 
 def __filter_colors(img: Mat) -> Mat:
@@ -28,11 +29,15 @@ def __find_and_cut_region(img: Mat) -> Mat:
     middle_x = img.shape[1] / 2
     middle_y = img.shape[0] / 2
     triangle_top = (middle_x, middle_y + 50)
+    top_left = (middle_x - 110, middle_y + 100)
+    top_right = (middle_x + 110, middle_y + 100)
     triangle_left = (img.shape[1] / 20, img.shape[0])
     triangle_right = (img.shape[1] * 95 / 100, img.shape[0])
-    vertices = np.array([[triangle_left, triangle_top, triangle_right]], dtype=np.int32)
+    vertices = np.array([[triangle_left, top_left, top_right, triangle_right]], dtype=np.int32)
     mask = np.zeros_like(img)
     cv.fillPoly(mask, vertices, (255, 255, 255))
     masked_image = cv.bitwise_and(img, mask)
+    mid_roi = np.float32([[550, img.shape[0] - 100], [350, img.shape[0]], [1000, img.shape[0]], [800, img.shape[0] - 100]])
+    cv.fillPoly(masked_image, np.int32([mid_roi]), (0, 0, 0))
     return masked_image
 

@@ -86,6 +86,8 @@ class Calibration:
 
     def warp_to_birdseye(self, img: Mat) -> Mat:
         h, w = img.shape[:2]
+        roi = np.array([[[565, 390], [683, 390], [1080, 596], [260, 596]]], dtype=np.int32)
+        dst = np.array([[[300, 0], [980, 0], [980, 720], [300, 720]]], dtype=np.int32)
         M = cv.getPerspectiveTransform(np.float32(self.warp_src), np.float32(self.warp_dst))
         warped = cv.warpPerspective(img, M, (w, h), flags=cv.INTER_LINEAR)
         return warped
