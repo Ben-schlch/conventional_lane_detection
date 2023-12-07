@@ -9,6 +9,14 @@ import os
 
 
 class Calibration:
+    __instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls.__instance:
+            cls.__instance = super().__new__(cls)
+            cls.__instance.__init__(*args, **kwargs)
+            cls.__init__ = lambda *aargs, **kwaargs: None
+        return cls.__instance
 
     def __init__(self,
                  calib_path: str = './images/Udacity/calib/',
@@ -86,8 +94,18 @@ class Calibration:
 
     def warp_to_birdseye(self, img: Mat) -> Mat:
         h, w = img.shape[:2]
-        roi = np.array([[[565, 390], [683, 390], [1080, 596], [260, 596]]], dtype=np.int32)
+        middle_x = img.shape[1] / 2
+        middle_y = img.shape[0] / 2
+        top_left = (middle_x - 140, middle_y + 100)
+        top_right = (middle_x + 140, middle_y + 100)
+        triangle_left = (img.shape[1] / 20, img.shape[0])
+        triangle_right = (img.shape[1] * 95 / 100, img.shape[0])
+        vertices = np.array([[top_left, top_right, triangle_right, triangle_left]], dtype=np.int32)
+        roi = np.array([[[530, 100], [740, 100], [1080, 596], [260, 596]]], dtype=np.int32)
         dst = np.array([[[300, 0], [980, 0], [980, 720], [300, 720]]], dtype=np.int32)
+        dst = np.array([[[0, 0], [w, 0], [w, h], [0, h]]], dtype=np.int32)
+        self.warp_src = vertices
+        self.warp_dst = dst
         M = cv.getPerspectiveTransform(np.float32(self.warp_src), np.float32(self.warp_dst))
         warped = cv.warpPerspective(img, M, (w, h), flags=cv.INTER_LINEAR)
         return warped
@@ -101,6 +119,7 @@ class Calibration:
     def _get_trans_mat_pickle(self, warp_mat_path: str):
         if os.path.exists(warp_mat_path):
             self.warp_src, self.warp_dst = pickle.load(open(warp_mat_path, 'rb'))
+            print(f"{self.warp_src}\n{self.warp_dst}")
             return
 
 

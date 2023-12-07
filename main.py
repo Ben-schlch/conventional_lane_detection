@@ -11,14 +11,18 @@ class LaneDetection:
 
     def __init__(self):
         self.calibration = Calibration()
-        self.previous_left_line: Mat | None = None
-        self.previous_right_line: Mat | None = None
+        self.previous_left_line = None
+        self.previous_right_line = None
+        self.previous_real_left = None
+        self.previous_real_right = None
         self.width = 0
         self.height = 0
+        self.y_m_per_pix = 30 / 720
+        self.x_m_per_pix = 3.7 / 700
         pass
 
     def run(self):
-        video = cv.VideoCapture('./images/Udacity/challenge_video.mp4')
+        video = cv.VideoCapture('./images/Udacity/project_video.mp4')
         start_time = time()
         frames = 0
         while video.isOpened():
@@ -42,13 +46,17 @@ class LaneDetection:
 
         img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
         img = self.calibration.undistort(img)
+        # img_warped = self.calibration.warp_to_birdseye(img)
         img_processed = preprocess(img)
         # img_processed = self.calibration.warp_to_birdseye(img_processed)
-        # img = self.calibration.warp_to_birdseye(img)
+
         self.width = img.shape[1]
         # lines = self._hough_transform(img_processed)
         left_line, right_line = self.seperate_lines_on_thresh(img_processed)
-        img = self._draw_lines(img, left_line, right_line)
+        fit_left_line, fit_right_line, real_left, real_right = self._fit_lane_lines(right_line, left_line)
+        radius = self._calculate_curvature(real_left, real_right)
+        print(radius)
+        img = self._draw_lines(img, fit_left_line, fit_right_line)
         return img
 
     def _hough_transform(self, img: Mat) -> Mat:
@@ -56,68 +64,89 @@ class LaneDetection:
                                maxLineGap=50, lines=np.array([]))
         return lines
 
-    def _fit_lane_lines(self, right_line, left_line) -> tuple[np.ndarray | None, np.ndarray | None]:
+    def _fit_lane_lines(self, right_line, left_line) \
+            -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None, np.ndarray | None]:
         # right_line, left_line = self._seperate_lane_lines(lines)
-        #print(right_line[0])
-        if left_line[0].size == 0 or left_line[1].size == 0:
-            left_line = None
-        if right_line[0].size == 0 or right_line[1].size == 0:
-            right_line = None
-        if left_line is not None:
-            # print(f"left_line: {left_line}")
-            if len(left_line[0]) < 3:
-                left_line = self.previous_left_line \
-                    if self.previous_left_line is not None \
-                    else np.polyfit(left_line[1], left_line[0], 1)
+        # print(right_line[0])
+        left_line_coeffs, real_left_coeffs = self.__fit_line(left_line)
+        right_line_coeffs, real_right_coeffs = self.__fit_line(right_line)
+        if left_line_coeffs is not None:
+            self.previous_left_line = left_line_coeffs
+            self.previous_real_left = real_left_coeffs
+        else:
+            left_line_coeffs = self.previous_left_line
+            real_left_coeffs = self.previous_real_left
+        if right_line_coeffs is not None:
+            self.previous_real_right = real_right_coeffs
+            self.previous_right_line = right_line_coeffs
+        else:
+            right_line_coeffs = self.previous_right_line
+            real_right_coeffs = self.previous_real_right
+        if left_line_coeffs is not None and real_left_coeffs is None:
+            print("????")
+        return left_line_coeffs, right_line_coeffs, real_left_coeffs, real_right_coeffs
 
-            else:
-                left_line = np.polyfit(left_line[1], left_line[0], 2)
-                print(f"left_line: {left_line}")
-                self.previous_left_line = left_line
-        if right_line is not None:
-            if len(right_line[0]) < 3:
-                print("BBBBBb")
-                right_line = self.previous_right_line \
-                    if self.previous_right_line is not None \
-                    else np.polyfit(right_line[1], right_line[0], 1)
-            else:
-                right_line = np.polyfit(right_line[1], right_line[0], 2)
-                self.previous_right_line = right_line
-        return left_line, right_line
+    def __fit_line(self, line: np.ndarray | None):
+        if line is None:
+            return None, None
+        if 0 in line.shape[:2]:
+            return None, None
+        if len(line[0]) < 3:
+            return None
+        coeffs = np.polyfit(line[1], line[0], 2)
+        if abs(coeffs[0]) > 0.0007:
+            return None, None
+        real_coeffs = np.polyfit(line[1]*self.x_m_per_pix, line[0]*self.y_m_per_pix, 2)
+        return coeffs, real_coeffs
 
     def _draw_lines(self, img: Mat, left_line, right_line) -> Mat:
         # if lines is None:
         #     return img
-        left_line, right_line = self._fit_lane_lines(left_line, right_line)
+        # left_line, right_line = self._fit_lane_lines(left_line, right_line)
         img = np.copy(img)
-        half_height = img.shape[0] // 2
-        y = np.linspace(half_height + 85, img.shape[0] -1, img.shape[0] - half_height)
-        if len(left_line) == 2:
-            x_left = left_line[0] * y + left_line[1]
-        elif len(left_line) == 3:
-            x_left = left_line[0] * y ** 2 + left_line[1] * y + left_line[2]
-        if len(right_line) == 2:
-            x_right = right_line[0] * y + right_line[1]
-        elif len(right_line) == 3:
-            x_right = right_line[0] * y ** 2 + right_line[1] * y + right_line[2]
         line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-        left_points = np.array(np.transpose(np.vstack([x_left, y])), np.int32)
-        right_points = np.array(np.transpose(np.vstack([x_right, y])), np.int32)
-        cv.polylines(line_img, [left_points], False, (255, 0, 0), thickness=10)
-        cv.polylines(line_img, [right_points], False, (0, 0, 255), thickness=10)
-        return cv.addWeighted(img, 0.8, line_img, 1, 0)
+        half_height = img.shape[0] // 2
+        # y = np.linspace(half_height + 85, img.shape[0] -1, img.shape[0] - half_height)
+        y = np.linspace(0, img.shape[0] - 1, img.shape[0])
+        if left_line is not None:
+            if len(left_line) == 2:
+                x_left = left_line[0] * y + left_line[1]
+            elif len(left_line) == 3:
+                x_left = left_line[0] * y ** 2 + left_line[1] * y + left_line[2]
+            left_points = np.array(np.transpose(np.vstack([x_left, y])), np.int32)
+            cv.polylines(line_img, [left_points], False, (255, 0, 0), thickness=40)
+
+        if right_line is not None:
+            if len(right_line) == 2:
+                x_right = right_line[0] * y + right_line[1]
+            elif len(right_line) == 3:
+                x_right = right_line[0] * y ** 2 + right_line[1] * y + right_line[2]
+            right_points = np.array(np.transpose(np.vstack([x_right, y])), np.int32)
+            cv.polylines(line_img, [right_points], False, (0, 0, 255), thickness=40)
+        line_img = self.calibration.warp_from_birdseye(line_img)
+        return cv.addWeighted(img, 0.6, line_img, 1, 0)
 
     def seperate_lines_on_thresh(self, img: Mat):
         middle = self.width // 2
-        right_y, right_x = np.where(img[:, middle:] == 255)
-        right_y, right_x = right_y.copy(), right_x.copy()
-        left_y, left_x = np.where(img[:, :middle] == 255)
-        left_y, left_x = left_y.copy(), left_x.copy()
+        middle_left = middle - self.width // 8
+        middle_right = middle + self.width // 8
+        right_y, right_x = np.where(img[:, middle_right:] == 255)
+        left_y, left_x = np.where(img[:, :middle_left] == 255)
+        right_x += middle_right
+        return np.array([left_x, left_y]), np.array([right_x, right_y])
 
-        # print(left_x[np.argmax(left_x)], right_x[np.argmax(right_x)])
-        right_x += middle
-        # right_y -= middle
-        return (left_x, left_y), (right_x, right_y)
+    def _calculate_curvature(self, fit_left_line, fit_right_line):
+        if fit_left_line is None or fit_right_line is None:
+            return -1
+        a_left, b_left, c_left = fit_left_line
+        a_right, b_right, c_right = fit_right_line
+        y = self.height - 1
+        y_eval = self.height / 2 # * self.y_m_per_pix
+        # x_eval = (self.width / 2) * self.x_m_per_pix
+        left_curvature = ((1 + (2 * a_left * y_eval + b_left) ** 2) ** 1.5) / np.absolute(2 * a_left)
+        right_curvature = ((1 + (2 * a_right * y_eval + b_right) ** 2) ** 1.5) / np.absolute(2 * a_right)
+        mean_curvature = np.mean([left_curvature, right_curvature])
+        return mean_curvature
 
     def _debug_draw_lines(self, img: Mat, left_line, right_line):
         """
