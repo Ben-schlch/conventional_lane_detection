@@ -42,15 +42,12 @@ class LaneDetection:
 
     def run(self):
         start_time = time()
-        video = cv.VideoCapture('./images/Udacity/project_video.mp4')
-        while video.isOpened():
-            ret, frame = video.read()
-            if not ret:
-                break
-            frame = self.detect_lane(frame)
-            cv.imshow('frame', frame)
-            if cv.waitKey(1) & 0xFF == ord('q'):
-                break
+        consumer = threading.Thread(target=self._consumer, args=(1,))
+        producer = threading.Thread(target=self._producer, args=('./images/Udacity/project_video.mp4',))
+        producer.start()
+        consumer.start()
+        producer.join()
+        consumer.join()
         end_time = time()
         print(f"Frames: {self.frames}")
         print(f"Time: {end_time - start_time}")
@@ -67,6 +64,19 @@ class LaneDetection:
         video.release()
 
     def _consumer(self, batch_size=8):
+        if batch_size == 1:
+            while True:
+                frame = self.image_queue.get()
+                if frame is -1:
+                    break
+                self.frames += 1
+                self.image_queue.task_done()
+                res = self.detect_lane(frame)
+                cv.imshow("frame", res)
+                if cv.waitKey(1) & 0xFF == ord('q'):
+                    break
+            cv.destroyAllWindows()
+            return
         video_over = False
         while not video_over:
             print("cons")
@@ -83,7 +93,6 @@ class LaneDetection:
                 if video_over:
                     break
                 continue
-
             with ThreadPoolExecutor(max_workers=batch_size) as executor:
                 results = executor.map(self.detect_lane, batch_frames)
                 for result in results:
@@ -94,20 +103,16 @@ class LaneDetection:
         cv.destroyAllWindows()
 
     def detect_lane(self, img: Mat) -> Mat:
-
         img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
         img = self.calibration.undistort(img)
-        # img_warped = self.calibration.warp_to_birdseye(img)
         img_processed = preprocess(img)
-        # img_processed = self.calibration.warp_to_birdseye(img_processed)
-
         self.width = img.shape[1]
-        # lines = self._hough_transform(img_processed)
         left_line, right_line = self.seperate_lines_on_thresh(img_processed)
         fit_left_line, fit_right_line, real_left, real_right = self._fit_lane_lines(right_line, left_line)
         radius = self._calculate_curvature(real_left, real_right)
-        print(radius)
         img = self._draw_lines(img, fit_left_line, fit_right_line)
+        font = cv.FONT_HERSHEY_SIMPLEX
+        cv.putText(img, f"Radius: {radius:.2f}m", (10, 50), font, 1, (255, 255, 255), 2, cv.LINE_AA)
         img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
         return img
 
@@ -152,25 +157,22 @@ class LaneDetection:
     def _draw_lines(self, img: Mat, left_line, right_line) -> Mat:
         img = np.copy(img)
         line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-        half_height = img.shape[0] // 2
-        # y = np.linspace(half_height + 85, img.shape[0] -1, img.shape[0] - half_height)
         y = np.linspace(0, img.shape[0] - 1, img.shape[0])
-        if left_line is not None:
-            left_points = self.__draw_line(left_line, y)
-            cv.polylines(line_img, [left_points], False, (255, 0, 0), thickness=40)
-        if right_line is not None:
-            right_points = self.__draw_line(right_line, y)
-            cv.polylines(line_img, [right_points], False, (0, 0, 255), thickness=40)
+        line_img = self.__draw_line(right_line, y, (0, 0, 255), line_img)
+        line_img = self.__draw_line(left_line, y, (255, 0, 0), line_img)
         line_img = self.calibration.warp_from_birdseye(line_img)
         return cv.addWeighted(img, 0.6, line_img, 1, 0)
 
-    def __draw_line(self, line, y):
+    def __draw_line(self, line, y, color, line_img):
+        if line is None:
+            return line_img
         if len(line) == 2:
             x = line[0] * y + line[1]
         elif len(line) == 3:
             x = line[0] * y ** 2 + line[1] * y + line[2]
         points = np.array(np.transpose(np.vstack([x, y])), np.int32)
-        return points
+        cv.polylines(line_img, [points], False, color, thickness=40)
+        return line_img
 
     def seperate_lines_on_thresh(self, img: Mat):
         middle = self.width // 2
