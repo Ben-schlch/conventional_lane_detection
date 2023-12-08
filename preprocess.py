@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 
 def preprocess(img: Mat) -> Mat:
+    # img = img[img.shape[0] // 2:, :]
     img_filtered = __filter_colors(img)
     img_gray = cv.cvtColor(img_filtered, cv.COLOR_RGB2GRAY)
     img_blurred = cv.GaussianBlur(img_gray, (5, 5), 0)
@@ -29,7 +30,7 @@ def __filter_colors(img: Mat) -> Mat:
 
 def __find_and_cut_region(img: Mat) -> Mat:
     middle_x = img.shape[1] / 2
-    middle_y = img.shape[0] / 2
+    middle_y = 0 # img.shape[0] / 2
     triangle_top = (middle_x, middle_y + 50)
     top_left = (middle_x - 140, middle_y + 100)
     top_right = (middle_x + 140, middle_y + 100)
@@ -39,7 +40,8 @@ def __find_and_cut_region(img: Mat) -> Mat:
     mask = np.zeros_like(img)
     cv.fillPoly(mask, vertices, (255, 255, 255))
     masked_image = cv.bitwise_and(img, mask)
-    mid_roi = np.float32([[550, img.shape[0] - 120], [350, img.shape[0]], [1000, img.shape[0]], [800, img.shape[0] - 120]])
+    mid_roi = np.float32([[640, img.shape[0] - 220], [350, img.shape[0]], [850, img.shape[0]], [662, img.shape[0] - 220]])
+    # mid_roi = np.float32([[550, img.shape[0] - 140], [350, img.shape[0]], [850, img.shape[0]], [700, img.shape[0] - 140]])
     cv.fillPoly(masked_image, np.int32([mid_roi]), (0, 0, 0))
     return masked_image
 
