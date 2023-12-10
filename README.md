@@ -1,4 +1,4 @@
-# Konventionelle Spurenerkennung
+# Conventional Lane Detection with OpenCV
 
 ## Project requirements
 
@@ -14,6 +14,7 @@
 - Lane Detection on not only the [Project Video](./images/Udacity/project_video.mp4) but also on the [Challenge Video](./images/Udacity/challenge_video.mp4)
   - [Project Video with Lane Detection](./Docs/Videos/detected_project_video.mp4)
   - [Challenge Video with Lane Detection](./Docs/Videos/detected_challenge_video.mp4)
+  - The Images are also in the [Docs/Images](./Docs/Images) folder
 - Over 70 FPS without visualization:   
 Frames: 1260   
 Time: 17.145667791366577   
@@ -23,7 +24,7 @@ FPS: 73.48795131995107
 
 ## Installation
 
-Please use Python [Venv](https://docs.python.org/3/library/venv.html) to install the dependencies.
+We recommend Python [Venv](https://docs.python.org/3/library/venv.html) to install the dependencies.
 
 Linux:
 ```bash
@@ -86,9 +87,22 @@ Some of our ideas did not find their way into the final algorithm:
 - We tried to not use Birds Eye View, which ended up working. But for the curve radius calculation we needed to use itanyway so we decided to use it for the whole algorithm.
 
 ## Optimization
-- Weg glassne von hough transform
-- Call graph analyse: paralleliseren vom einlesen des nächsten frames in hauptspeicher
 
+Our first optimization was to remove one of our key features: The Hough Transform.
+We used
+```python
+cv2.HoughLinesP()
+```
+but ended up removing it not mainly because of performance concerns but because it did not give us the results we wanted. We ended up with lines instead of curves.   
+Nonetheless it was a good idea to remove it because it reduced the calculation cost.
+
+Our second optimization was to use a very exact ROI and color everything outside black.
+
+Afterwards we checked the call graph ([check it here](./Docs/Funktions_Profile_Callgraph.pdf)) to find the biggest slowdowns. 
+We found out that the biggest slowdown was reading the image into memory. Therefore we parallelized the reading of the next image with the processing of the current image.
+This makes sense, in comparison to processing all images parallel, because also in the real world the camera is always recording and not finished with recording when the image is processed.
+
+One alternative Optimization we did not try is to use Parallelization for our two lanes. Because we anyway split the image in half and detect one lane left and one right, we could use multiprocessing and do all the steps parallel. We did not try it because of time limitations.
 ## Lessons Learned
 
 Do not underestimate the time needed for the project. Especially for finetuning parameters.   
@@ -96,7 +110,7 @@ This project is extremely time consuming, although it made fun. Sometimes it is 
 
 Also we learned a lot about the OpenCV library and how to use it.   
 
-We also learned how to use the call graph to find the slowest functions,....
+We also learned how to use the call graph to find the slowest functions and how to analyze the call graph. [Check it here](./Docs/Funktions_Profile_Callgraph.pdf)
 
 
 ## What we would do differently next time and what we want to try in the future
