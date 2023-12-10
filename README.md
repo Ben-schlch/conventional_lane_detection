@@ -85,6 +85,10 @@ Some of our ideas did not find their way into the final algorithm:
   Also we reduced calculation cost by removing the Hough Transform.
 - We tried to not use Birds Eye View, which ended up working. But for the curve radius calculation we needed to use itanyway so we decided to use it for the whole algorithm.
 
+## Optimization
+- Weg glassne von hough transform
+- Call graph analyse: paralleliseren vom einlesen des nächsten frames in hauptspeicher
+
 ## Lessons Learned
 
 Do not underestimate the time needed for the project. Especially for finetuning parameters.   
@@ -100,6 +104,7 @@ We also learned how to use the call graph to find the slowest functions,....
 - Try the Sliding Window approach to detect the lanes. We did not use it because we thought it would be too boring. We got it recommended but thought it would be nice to try to use our knowledge from the course.
 - Try to search for the lane only close to the lane from the previous frame. This would be a good idea to speed up the algorithm and improve results.
 - Try to use the color information to group the lanes. This would be a good idea to improve the results on the Harder Challenge Video.
+- One big possible time improvement we did not try is to use Parallelization for our two lanes. Because we anyway split the image in half and detect one lane left and one right, we could use multiprocessing and do all the steps parallel.
 
 ## References
 https://medium.com/analytics-vidhya/building-a-lane-detection-system-f7a727c6694
