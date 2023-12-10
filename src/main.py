@@ -1,10 +1,10 @@
 import sys
 
-from src.Calibration import Calibration
+from Calibration import Calibration
 import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike as Mat
-from src.preprocess import preprocess
+from preprocess import preprocess
 from time import time
 from concurrent.futures import ThreadPoolExecutor
 import threading
