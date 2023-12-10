@@ -9,11 +9,19 @@ import os
 
 
 class Calibration:
+    __instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls.__instance:
+            cls.__instance = super().__new__(cls)
+            cls.__instance.__init__(*args, **kwargs)
+            cls.__init__ = lambda *aargs, **kwaargs: None
+        return cls.__instance
 
     def __init__(self,
-                 calib_path: str = './images/Udacity/calib/',
-                 calib_config_path: str = './images/Udacity/calib/config.pickle',
-                 warp_mat_path: str = './images/Udacity/calib/warp_mat.pickle'):
+                 calib_path: str = '../images/Udacity/calib/',
+                 calib_config_path: str = '../images/Udacity/calib/config.pickle',
+                 warp_mat_path: str = '../images/Udacity/calib/warp_mat.pickle'):
         self.dist: Mat | None = None
         self.mtx: Mat | None = None
         self.roi: Mat | None = None
@@ -27,6 +35,10 @@ class Calibration:
         self._calibrate()
 
     def _get_obj_img_points(self) -> tuple[Sequence[Mat], Sequence[Mat]]:
+        """
+        Gets the object and image points for the calibration.
+        :return: Object and image points
+        """
         grid_size = (9, 6)
         calib_imgs = [cv.cvtColor(cv.imread(f'{self.calib_path}calibration{i}.jpg'), cv.COLOR_BGR2RGB) for i in
                       range(1, 21)]
@@ -53,7 +65,11 @@ class Calibration:
 
         return objpoints, imgpoints
 
-    def _calibrate(self):
+    def _calibrate(self) -> None:
+        """
+        Calibrates the camera and saves parameters in a pickle file.
+        :return: None
+        """
         if os.path.exists(self.calib_config_path):
             with open(self.calib_config_path, "rb") as f:
                 self.mtx, self.dist, self.roi, self.newcammat = pickle.load(f)
@@ -75,6 +91,11 @@ class Calibration:
             pickle.dump((self.mtx, self.dist, self.roi, self.newcammat), f)
 
     def undistort(self, img: Mat) -> Mat:
+        """
+        Undistorts the image.
+        :param img: Image to undistort
+        :return: Undistorted image
+        """
         undist_img = cv.undistort(img, self.mtx, self.dist, None, self.newcammat)
         x, y, w, h = self.roi
         undist_img = undist_img[y: y+h, x:x+w]
@@ -85,28 +106,54 @@ class Calibration:
     #     return
 
     def warp_to_birdseye(self, img: Mat) -> Mat:
+        """
+        Warps the image to birdseye view.
+        :param img: Image to warp
+        :return: Warped image
+        """
         h, w = img.shape[:2]
-        roi = np.array([[[565, 390], [683, 390], [1080, 596], [260, 596]]], dtype=np.int32)
+        middle_x = img.shape[1] / 2
+        middle_y = img.shape[0] / 2
+        top_left = (middle_x - 140, middle_y + 100)
+        top_right = (middle_x + 140, middle_y + 100)
+        triangle_left = (img.shape[1] / 20, img.shape[0])
+        triangle_right = (img.shape[1] * 95 / 100, img.shape[0])
+        vertices = np.array([[top_left, top_right, triangle_right, triangle_left]], dtype=np.int32)
+        roi = np.array([[[530, 100], [740, 100], [1080, 596], [260, 596]]], dtype=np.int32)
         dst = np.array([[[300, 0], [980, 0], [980, 720], [300, 720]]], dtype=np.int32)
+        dst = np.array([[[0, 0], [w, 0], [w, h], [0, h]]], dtype=np.int32)
+        self.warp_src = vertices
+        self.warp_dst = dst
         M = cv.getPerspectiveTransform(np.float32(self.warp_src), np.float32(self.warp_dst))
         warped = cv.warpPerspective(img, M, (w, h), flags=cv.INTER_LINEAR)
         return warped
 
     def warp_from_birdseye(self, img: Mat) -> Mat:
+        """
+        Warps the image from birdseye view to the original perspective.
+        :param img: Image to warp
+        :return: warped image
+        """
         h, w = img.shape[:2]
         M = cv.getPerspectiveTransform(np.float32(self.warp_dst), np.float32(self.warp_src))
         warped = cv.warpPerspective(img, M, (w, h), flags=cv.INTER_LINEAR)
         return warped
 
-    def _get_trans_mat_pickle(self, warp_mat_path: str):
+    def _get_trans_mat_pickle(self, warp_mat_path: str) -> None:
+        """
+        Gets the transformation matrices from a pickle file.
+        :param warp_mat_path: Path to the pickle file
+        :return: None
+        """
         if os.path.exists(warp_mat_path):
             self.warp_src, self.warp_dst = pickle.load(open(warp_mat_path, 'rb'))
+            print(f"{self.warp_src}\n{self.warp_dst}")
             return
 
 
 if __name__ == '__main__':
     calibration = Calibration()
-    image = calibration.undistort(cv.cvtColor(cv.imread('./images/Udacity/image001.jpg'), cv.COLOR_BGR2RGB))
+    image = calibration.undistort(cv.cvtColor(cv.imread('../images/Udacity/image001.jpg'), cv.COLOR_BGR2RGB))
     # image = calibration.warp_to_birdseye(image)
     plt.figure(figsize=(30,30))
     plt.imshow(image)
