@@ -127,19 +127,14 @@ class LaneDetection:
         :param img: Frame to detect the lane in.
         :return: Image with lanes drawn on it.
         """
-        cv.imwrite("./pipeline/raw_img.png", cv.cvtColor(img, cv.COLOR_BGR2RGB))
         img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-        cv.imwrite("./pipeline/rgb_img.png", cv.cvtColor(img, cv.COLOR_RGB2BGR))
         img = self.calibration.undistort(img)
-        cv.imwrite("./pipeline/undistorted_img.png", cv.cvtColor(img, cv.COLOR_RGB2BGR))
         img_processed = preprocess(img)
         self.width = img.shape[1]
         left_line, right_line = self.seperate_lines_on_thresh(img_processed)
         fit_left_line, fit_right_line, real_left, real_right = self._fit_lane_lines(right_line, left_line)
         radius = self._calculate_curvature(real_left, real_right)
         img = self._draw_lines(img, fit_left_line, fit_right_line)
-        cv.imwrite("./pipeline/lines_img.png", cv.cvtColor(img, cv.COLOR_RGB2BGR))
-        sys.exit(0)
         font = cv.FONT_HERSHEY_SIMPLEX
         cv.putText(img, f"Radius: {radius:.2f}m", (10, 50), font, 1, (255, 255, 255), 2, cv.LINE_AA)
         img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
