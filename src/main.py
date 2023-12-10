@@ -25,6 +25,7 @@ class LaneDetection:
         self.x_m_per_pix = 3.7 / 300
         self.image_queue = queue.Queue()
         self.frames = 0
+        self.font = cv.FONT_HERSHEY_SIMPLEX
         pass
 
     def run_with_batch(self) -> None:
@@ -84,6 +85,9 @@ class LaneDetection:
         :param batch_size: Number of frames to process in parallel.
         :return: None
         """
+        next_time = time()
+        prev = next_time
+        prev_fps = 0
         if batch_size == 1:
             while True:
                 frame = self.image_queue.get()
@@ -92,6 +96,12 @@ class LaneDetection:
                 self.frames += 1
                 self.image_queue.task_done()
                 res = self.detect_lane(frame)
+                if self.frames % 5 == 0:
+                    prev = next_time
+                    next_time = time()
+                    prev_fps = 5 / (next_time - prev)
+                cv.putText(res, f"FPS: {prev_fps:.2f}",
+                           (1000, 50), self.font, 1, (255, 0, 255), 2, cv.LINE_AA)
                 cv.imshow("frame", res)
                 if cv.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -135,8 +145,8 @@ class LaneDetection:
         fit_left_line, fit_right_line, real_left, real_right = self._fit_lane_lines(right_line, left_line)
         radius = self._calculate_curvature(real_left, real_right)
         img = self._draw_lines(img, fit_left_line, fit_right_line)
-        font = cv.FONT_HERSHEY_SIMPLEX
-        cv.putText(img, f"Radius: {radius:.2f}m", (10, 50), font, 1, (255, 255, 255), 2, cv.LINE_AA)
+
+        cv.putText(img, f"Radius: {radius:.2f}m", (10, 50), self.font, 1, (255, 255, 255), 2, cv.LINE_AA)
         img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
         return img
 
