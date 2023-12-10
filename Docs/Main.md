@@ -23,7 +23,7 @@ We could have changed many things:
 ### \_\_init\_\_
 
 ```python
-def __init__(self)
+def __new__(cls, *args, **kwargs):
 ```
 Die Initialisierung des Lane Detection Objekts. Hierbei werden die Konfigurationen geladen und einige Werte initialisiert.
 
