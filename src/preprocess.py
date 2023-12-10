@@ -11,11 +11,17 @@ def preprocess(img: Mat) -> Mat:
     :return: Preprocessed image
     """
     img_filtered = __filter_colors(img)
+    cv.imwrite('./pipeline/filtered.png', cv.cvtColor(img_filtered, cv.COLOR_RGB2BGR))
     img_gray = cv.cvtColor(img_filtered, cv.COLOR_RGB2GRAY)
+    cv.imwrite('./pipeline/gray.png', img_gray)
     img_blurred = cv.GaussianBlur(img_gray, (5, 5), 0)
+    cv.imwrite('./pipeline/blurred.png', img_blurred)
     img_canny = cv.Canny(img_blurred, 50, 150)
+    cv.imwrite('./pipeline/canny.png', img_canny)
     img_roi = __find_and_cut_region(img_canny)
+    cv.imwrite('./pipeline/roi.png', img_roi)
     img_warped = Calibration().warp_to_birdseye(img_roi)
+    cv.imwrite('./pipeline/warped.png', img_warped)
     return img_warped
 
 
@@ -53,5 +59,5 @@ def __find_and_cut_region(img: Mat) -> Mat:
     masked_image = cv.bitwise_and(img, mask)
     mid_roi = np.float32([[640, img.shape[0] - 220], [350, img.shape[0]], [850, img.shape[0]], [662, img.shape[0] - 220]])
     cv.fillPoly(masked_image, np.int32([mid_roi]), (0, 0, 0))
-    return img
+    return masked_image
 
