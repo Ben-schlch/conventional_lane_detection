@@ -9,11 +9,12 @@ from time import time
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import queue
+import argparse
 
 
 class LaneDetection:
 
-    def __init__(self):
+    def __init__(self, visualize=False, video='./images/Udacity/project_video.mp4'):
         self.calibration = Calibration()
         self.previous_left_line = None
         self.previous_right_line = None
@@ -26,6 +27,8 @@ class LaneDetection:
         self.image_queue = queue.Queue()
         self.frames = 0
         self.font = cv.FONT_HERSHEY_SIMPLEX
+        self.visualize = visualize
+        self.video = video
         pass
 
     def run_with_batch(self) -> None:
@@ -53,7 +56,7 @@ class LaneDetection:
         """
         start_time = time()
         consumer = threading.Thread(target=self._consumer, args=(1,))
-        producer = threading.Thread(target=self._producer, args=('./images/Udacity/project_video.mp4',))
+        producer = threading.Thread(target=self._producer, args=(self.video,))
         producer.start()
         consumer.start()
         producer.join()
@@ -96,18 +99,21 @@ class LaneDetection:
                 self.frames += 1
                 self.image_queue.task_done()
                 res = self.detect_lane(frame)
-                if self.frames % 5 == 0:
-                    prev = next_time
-                    next_time = time()
-                    prev_fps = 5 / (next_time - prev)
-                cv.putText(res, f"FPS: {prev_fps:.2f}",
-                           (1000, 50), self.font, 1, (255, 0, 255), 2, cv.LINE_AA)
-                cv.imshow("frame", res)
-                if cv.waitKey(1) & 0xFF == ord('q'):
-                    break
-            cv.destroyAllWindows()
+                if self.visualize:
+                    if self.frames % 5 == 0:
+                        prev = next_time
+                        next_time = time()
+                        prev_fps = 5 / (next_time - prev)
+                    cv.putText(res, f"FPS: {prev_fps:.2f}",
+                               (1000, 50), self.font, 1, (255, 0, 255), 2, cv.LINE_AA)
+                    cv.imshow("frame", res)
+                    if cv.waitKey(1) & 0xFF == ord('q'):
+                        break
+            if self.visualize:
+                cv.destroyAllWindows()
             return
         video_over = False
+
         while not video_over:
             batch_frames = []
             for _ in range(batch_size):
@@ -116,7 +122,6 @@ class LaneDetection:
                     video_over = True
                     break
                 batch_frames.append(frame)
-                self.frames += 1
                 self.image_queue.task_done()
             if len(batch_frames) == 0:
                 if video_over:
@@ -125,10 +130,12 @@ class LaneDetection:
             with ThreadPoolExecutor(max_workers=batch_size) as executor:
                 results = executor.map(self.detect_lane, batch_frames)
                 for result in results:
+                    self.frames += 1
                     cv.imshow('frame', result)
                     if cv.waitKey(1) & 0xFF == ord('q'):
                         break
         print("done")
+
         cv.destroyAllWindows()
 
     def detect_lane(self, img: Mat) -> Mat:
@@ -144,9 +151,9 @@ class LaneDetection:
         left_line, right_line = self.seperate_lines_on_thresh(img_processed)
         fit_left_line, fit_right_line, real_left, real_right = self._fit_lane_lines(right_line, left_line)
         radius = self._calculate_curvature(real_left, real_right)
-        img = self._draw_lines(img, fit_left_line, fit_right_line)
-
-        cv.putText(img, f"Radius: {radius:.2f}m", (10, 50), self.font, 1, (255, 255, 255), 2, cv.LINE_AA)
+        if self.visualize:
+            img = self._draw_lines(img, fit_left_line, fit_right_line)
+            cv.putText(img, f"Radius: {radius:.2f}m", (10, 50), self.font, 1, (255, 255, 255), 2, cv.LINE_AA)
         img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
         return img
 
@@ -260,4 +267,9 @@ class LaneDetection:
 
 
 if __name__ == '__main__':
-    LaneDetection().run()
+    parser = argparse.ArgumentParser(description='Lane Detection')
+    parser.add_argument('--visualize', dest='visualize', action='store_true')
+    parser.add_argument('--video', dest='video', action="store")
+    parser.set_defaults(visualize=False, video='./images/Udacity/project_video.mp4')
+    args = parser.parse_args()
+    LaneDetection(args.visualize, args.video).run()
