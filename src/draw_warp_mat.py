@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from Calibration import Calibration
+from src.Calibration import Calibration
 import pickle
 
 """
@@ -34,10 +34,10 @@ if __name__ == "__main__":
     src = np.matrix([[578, 393], [654, 394], [960, 588], [296, 585]])
     dst = np.matrix([[300, 0], [980, 0], [980, 720], [300, 720]])
 
-    with open('./images/Udacity/calib/warp_mat.pickle', 'wb') as f:
+    with open('../images/Udacity/calib/warp_mat.pickle', 'wb') as f:
         pickle.dump((src, dst), f)
     img_scanner = cv.imread(
-        'C:/users/inf21034/PycharmProjects/conventional_lane_detection/images/Udacity/image001.jpg')
+        '/images/Udacity/image001.jpg')
     img_scanner = Calibration().undistort(img_scanner)
     img_scanner = img_scanner[375:600, 200:1100]
     img = img_scanner.copy()

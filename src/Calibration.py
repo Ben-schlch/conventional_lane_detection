@@ -19,9 +19,9 @@ class Calibration:
         return cls.__instance
 
     def __init__(self,
-                 calib_path: str = './images/Udacity/calib/',
-                 calib_config_path: str = './images/Udacity/calib/config.pickle',
-                 warp_mat_path: str = './images/Udacity/calib/warp_mat.pickle'):
+                 calib_path: str = '../images/Udacity/calib/',
+                 calib_config_path: str = '../images/Udacity/calib/config.pickle',
+                 warp_mat_path: str = '../images/Udacity/calib/warp_mat.pickle'):
         self.dist: Mat | None = None
         self.mtx: Mat | None = None
         self.roi: Mat | None = None
@@ -153,7 +153,7 @@ class Calibration:
 
 if __name__ == '__main__':
     calibration = Calibration()
-    image = calibration.undistort(cv.cvtColor(cv.imread('./images/Udacity/image001.jpg'), cv.COLOR_BGR2RGB))
+    image = calibration.undistort(cv.cvtColor(cv.imread('../images/Udacity/image001.jpg'), cv.COLOR_BGR2RGB))
     # image = calibration.warp_to_birdseye(image)
     plt.figure(figsize=(30,30))
     plt.imshow(image)

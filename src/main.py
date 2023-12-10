@@ -1,9 +1,8 @@
-from Calibration import Calibration
+from src.Calibration import Calibration
 import cv2 as cv
 import numpy as np
-import matplotlib.pyplot as plt
 from cv2.typing import MatLike as Mat
-from preprocess import preprocess
+from src.preprocess import preprocess
 from time import time
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -56,6 +55,7 @@ class LaneDetection:
         consumer.start()
         producer.join()
         consumer.join()
+
         end_time = time()
         print(f"Frames: {self.frames}")
         print(f"Time: {end_time - start_time}")
@@ -85,7 +85,7 @@ class LaneDetection:
         if batch_size == 1:
             while True:
                 frame = self.image_queue.get()
-                if frame is -1:
+                if frame == -1:
                     break
                 self.frames += 1
                 self.image_queue.task_done()
@@ -101,7 +101,7 @@ class LaneDetection:
             batch_frames = []
             for _ in range(batch_size):
                 frame = self.image_queue.get()
-                if frame is -1:
+                if frame == -1:
                     video_over = True
                     break
                 batch_frames.append(frame)
